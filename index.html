@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RetinaScan AI Eye Disease Detection</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:        #080c14;
+    --surface:   #0d1420;
+    --card:      #111827;
+    --border:    #1e2d45;
+    --accent:    #00d4ff;
+    --accent2:   #7c3aed;
+    --green:     #10b981;
+    --yellow:    #f59e0b;
+    --red:       #ef4444;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --mono:      'Space Mono', monospace;
+    --sans:      'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--sans); min-height: 100vh; overflow-x: hidden;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+  body::after {
+    content: ''; position: fixed;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(0,212,255,0.06) 0%, transparent 70%);
+    top: -200px; right: -200px; pointer-events: none; z-index: 0;
+  }
+  .glow-orb {
+    position: fixed; width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(124,58,237,0.07) 0%, transparent 70%);
+    bottom: -100px; left: -100px; pointer-events: none; z-index: 0;
+  }
+
+  header {
+    position: relative; z-index: 10;
+    padding: 24px 40px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(8,12,20,0.8); backdrop-filter: blur(20px);
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;
+  }
+  .logo-text { font-family: var(--mono); font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+  .logo-sub  { font-size: 0.7rem; color: var(--muted); font-family: var(--mono); letter-spacing: 2px; text-transform: uppercase; }
+  .header-badge {
+    font-family: var(--mono); font-size: 0.7rem; padding: 6px 14px;
+    border: 1px solid var(--border); border-radius: 20px; color: var(--muted); letter-spacing: 1px;
+  }
+
+  .hero { position: relative; z-index: 10; text-align: center; padding: 60px 40px 40px; }
+  .hero-tag {
+    display: inline-block; font-family: var(--mono); font-size: 0.7rem;
+    letter-spacing: 3px; text-transform: uppercase; color: var(--accent);
+    border: 1px solid rgba(0,212,255,0.3); padding: 6px 16px; border-radius: 20px;
+    margin-bottom: 20px; background: rgba(0,212,255,0.05);
+  }
+  .hero h1 {
+    font-family: var(--mono); font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 700; line-height: 1.1; margin-bottom: 16px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent2) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero p { color: var(--muted); font-size: 1rem; max-width: 520px; margin: 0 auto; line-height: 1.6; }
+
+  .main {
+    position: relative; z-index: 10; max-width: 1200px;
+    margin: 0 auto; padding: 20px 40px 60px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+  }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .card-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .card-header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .card-header h3 { font-family: var(--mono); font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+  .card-body { padding: 20px; }
+
+  .upload-zone {
+    border: 2px dashed var(--border); border-radius: 12px; padding: 40px 20px;
+    text-align: center; cursor: pointer; transition: all 0.3s ease;
+    position: relative; background: rgba(0,212,255,0.02);
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent); background: rgba(0,212,255,0.05); transform: translateY(-2px);
+  }
+  .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .upload-icon { font-size: 3rem; margin-bottom: 16px; display: block; opacity: 0.6; }
+  .upload-zone h4 { font-size: 1rem; color: var(--text); margin-bottom: 6px; }
+  .upload-zone p  { font-size: 0.8rem; color: var(--muted); font-family: var(--mono); }
+  .preview-img { width: 100%; border-radius: 10px; object-fit: contain; max-height: 240px; display: none; }
+
+  .analyze-btn {
+    width: 100%; margin-top: 16px; padding: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 10px; color: #fff;
+    font-family: var(--mono); font-size: 0.9rem; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
+    transition: all 0.3s ease; position: relative; overflow: hidden;
+  }
+  .analyze-btn::before {
+    content: ''; position: absolute; top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    transition: left 0.5s ease;
+  }
+  .analyze-btn:hover::before { left: 100%; }
+  .analyze-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,212,255,0.3); }
+  .analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .gradcam-container {
+    min-height: 280px; display: flex; align-items: center; justify-content: center;
+    border-radius: 10px; background: rgba(0,0,0,0.3); overflow: hidden;
+  }
+  .gradcam-container img { width: 100%; max-height: 280px; object-fit: contain; border-radius: 10px; }
+  .gradcam-placeholder { text-align: center; color: var(--muted); }
+  .gradcam-placeholder .big-icon { font-size: 3rem; opacity: 0.3; display: block; margin-bottom: 10px; }
+  .gradcam-placeholder p { font-size: 0.8rem; font-family: var(--mono); }
+
+  .results-panel { display: none; }
+
+  .prediction-badge {
+    padding: 16px 20px; border-radius: 12px;
+    background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.1));
+    border: 1px solid rgba(0,212,255,0.2); margin-bottom: 16px;
+    transition: all 0.4s ease;
+  }
+  .prediction-badge.normal-result {
+    background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(16,185,129,0.05));
+    border-color: rgba(16,185,129,0.3);
+  }
+
+  .prediction-label { font-family: var(--mono); font-size: 0.65rem; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .prediction-name  { font-size: 1.4rem; font-weight: 600; color: var(--accent); margin-bottom: 4px; }
+  .prediction-name.healthy { color: var(--green); }
+
+  .confidence-row { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+  .conf-bar-bg { flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+  .conf-bar-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 1s ease;
+  }
+  .conf-bar-fill.healthy { background: linear-gradient(90deg, var(--green), #34d399); }
+  .conf-pct { font-family: var(--mono); font-size: 0.85rem; color: var(--accent); font-weight: 700; min-width: 45px; text-align: right; }
+  .conf-pct.healthy { color: var(--green); }
+
+  .severity-badge {
+    display: inline-block; font-family: var(--mono); font-size: 0.65rem;
+    padding: 3px 10px; border-radius: 20px; letter-spacing: 1px; text-transform: uppercase; margin-top: 8px;
+  }
+  .severity-High     { background: rgba(239,68,68,0.15);   color: var(--red);    border: 1px solid rgba(239,68,68,0.3); }
+  .severity-Moderate { background: rgba(245,158,11,0.15);  color: var(--yellow); border: 1px solid rgba(245,158,11,0.3); }
+  .severity-Low      { background: rgba(16,185,129,0.15);  color: var(--green);  border: 1px solid rgba(16,185,129,0.3); }
+  .severity-None     { background: rgba(16,185,129,0.15);  color: var(--green);  border: 1px solid rgba(16,185,129,0.3); }
+
+  .healthy-banner {
+    display: none; padding: 14px 16px; border-radius: 10px;
+    background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3);
+    margin-bottom: 14px; text-align: center;
+  }
+  .healthy-banner .big { font-size: 2rem; display: block; margin-bottom: 6px; }
+  .healthy-banner p { font-size: 0.85rem; color: var(--green); font-family: var(--mono); }
+
+  .info-box {
+    padding: 14px; background: rgba(255,255,255,0.03); border-radius: 10px;
+    border-left: 3px solid var(--accent2); margin-bottom: 16px;
+    font-size: 0.85rem; color: #94a3b8; line-height: 1.6;
+  }
+  .info-box.healthy { border-left-color: var(--green); }
+
+  .prob-section h4 { font-family: var(--mono); font-size: 0.65rem; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .prob-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .prob-label { font-size: 0.78rem; color: var(--text); min-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prob-bar-bg { flex: 1; height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+  .prob-bar-fill { height: 100%; border-radius: 4px; transition: width 1.2s cubic-bezier(0.4,0,0.2,1); }
+  .prob-bar-fill.top     { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .prob-bar-fill.healthy { background: linear-gradient(90deg, var(--green), #34d399); }
+  .prob-bar-fill.other   { background: rgba(100,116,139,0.5); }
+  .prob-pct { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); min-width: 38px; text-align: right; }
+
+  .disclaimer {
+    grid-column: 1 / -1; padding: 14px 20px;
+    background: rgba(245,158,11,0.05); border: 1px solid rgba(245,158,11,0.2);
+    border-radius: 10px; font-size: 0.78rem; color: var(--muted);
+    display: flex; align-items: center; gap: 10px; font-family: var(--mono);
+  }
+
+  .how-it-works { grid-column: 1 / -1; }
+  .steps { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-top: 16px; }
+  .step { padding: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; text-align: center; }
+  .step-num {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 0.8rem; font-weight: 700;
+    margin: 0 auto 10px; color: #fff;
+  }
+  .step p { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+
+  .loading { display: none; text-align: center; padding: 40px; }
+  .spinner {
+    width: 40px; height: 40px; border: 3px solid rgba(0,212,255,0.1);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading p { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); letter-spacing: 2px; }
+
+  footer {
+    position: relative; z-index: 10; text-align: center; padding: 24px;
+    border-top: 1px solid var(--border); font-family: var(--mono);
+    font-size: 0.7rem; color: var(--muted); letter-spacing: 1px;
+  }
+
+  @media (max-width: 768px) {
+    .main { grid-template-columns: 1fr; padding: 20px; }
+    .steps { grid-template-columns: 1fr 1fr; }
+    header { padding: 16px 20px; }
+    .hero  { padding: 40px 20px 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="glow-orb"></div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">👁️</div>
+    <div>
+      <div class="logo-text">RetinaScan AI</div>
+      <div class="logo-sub">Eye Disease Detection</div>
+    </div>
+  </div>
+  <div class="header-badge">BCA PROJECT · 2025–26</div>
+</header>
+
+<div class="hero">
+  <div class="hero-tag">⚡ EfficientNetB0 · 6-Class · Grad-CAM</div>
+  <h1>Retinal Disease<br/>Detection System</h1>
+  <p>Upload a retinal fundus image. The AI detects 5 eye diseases or confirms a healthy retina — with visual Grad-CAM explanation.</p>
+</div>
+
+<div class="main">
+
+  <!-- Upload -->
+  <div class="card">
+    <div class="card-header">
+      <div class="dot"></div>
+      <h3>Upload Retinal Image</h3>
+    </div>
+    <div class="card-body">
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept="image/*"/>
+        <span class="upload-icon">🔬</span>
+        <h4>Drop image here or click to browse</h4>
+        <p>PNG · JPG · JPEG supported</p>
+      </div>
+      <img id="previewImg" class="preview-img" alt="Preview"/>
+      <button class="analyze-btn" id="analyzeBtn" disabled onclick="analyzeImage()">
+        ▶ &nbsp; ANALYZE IMAGE
+      </button>
+    </div>
+  </div>
+
+  <!-- Grad-CAM -->
+  <div class="card">
+    <div class="card-header">
+      <div class="dot" style="background:var(--accent2);box-shadow:0 0 8px var(--accent2)"></div>
+      <h3>Grad-CAM · AI Focus Region</h3>
+    </div>
+    <div class="card-body">
+      <div class="gradcam-container" id="gradcamContainer">
+        <div class="gradcam-placeholder">
+          <span class="big-icon">🧠</span>
+          <p>Heatmap will appear here</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="card">
+    <div class="card-header">
+      <div class="dot" style="background:var(--green);box-shadow:0 0 8px var(--green)"></div>
+      <h3>Diagnosis Result</h3>
+    </div>
+    <div class="card-body">
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>ANALYZING RETINA...</p>
+      </div>
+      <div id="defaultMsg" style="text-align:center;padding:40px 20px;color:var(--muted)">
+        <p style="font-family:var(--mono);font-size:0.8rem">Upload an image and click Analyze</p>
+      </div>
+      <div class="results-panel" id="resultsPanel">
+        <div class="healthy-banner" id="healthyBanner">
+          <span class="big">✅</span>
+          <p>RETINA APPEARS HEALTHY</p>
+        </div>
+        <div class="prediction-badge" id="predBadge">
+          <div class="prediction-label">Detected Condition</div>
+          <div class="prediction-name" id="predName">—</div>
+          <div class="confidence-row">
+            <div class="conf-bar-bg">
+              <div class="conf-bar-fill" id="confBar" style="width:0%"></div>
+            </div>
+            <div class="conf-pct" id="confPct">0%</div>
+          </div>
+          <span class="severity-badge" id="severityBadge"></span>
+        </div>
+        <div class="info-box" id="infoBox"></div>
+        <p style="font-size:0.72rem;color:var(--muted);font-family:var(--mono);line-height:1.5">
+          ⚠ AI-assisted tool for educational purposes only. Always consult a qualified ophthalmologist.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Probabilities -->
+  <div class="card">
+    <div class="card-header">
+      <div class="dot" style="background:var(--yellow);box-shadow:0 0 8px var(--yellow)"></div>
+      <h3>Disease Probability Distribution</h3>
+    </div>
+    <div class="card-body">
+      <div id="probDefault" style="text-align:center;padding:40px 20px;color:var(--muted)">
+        <p style="font-family:var(--mono);font-size:0.8rem">Probabilities will appear here</p>
+      </div>
+      <div id="probPanel" style="display:none">
+        <div class="prob-section">
+          <h4>All 6 Classes · Confidence Score</h4>
+          <div id="probBars"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- How It Works -->
+  <div class="card how-it-works">
+    <div class="card-header">
+      <div class="dot" style="background:var(--accent2);box-shadow:0 0 8px var(--accent2)"></div>
+      <h3>How It Works</h3>
+    </div>
+    <div class="card-body">
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><p>Upload a retinal fundus photograph</p></div>
+        <div class="step"><div class="step-num">2</div><p>EfficientNetB0 extracts deep visual features</p></div>
+        <div class="step"><div class="step-num">3</div><p>Model classifies into disease or healthy (6 classes)</p></div>
+        <div class="step"><div class="step-num">4</div><p>Grad-CAM shows which retinal region influenced the prediction</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Disclaimer -->
+  <div class="disclaimer">
+    <span>⚠️</span>
+    <span>St. Francis College, Koramangala, Bangalore · BCA Final Year Project 2025–26 · Shaun D · U18IW23S0166 · Supervisor: Prof. Gajanan Revankar · 6-Class Model · Dataset: ~1,500 retinal images</span>
+  </div>
+
+</div>
+
+<footer>
+  RETINASCAN AI &nbsp;·&nbsp; EFFICIENTNETB0 TRANSFER LEARNING &nbsp;·&nbsp; GRAD-CAM EXPLAINABILITY &nbsp;·&nbsp; 6-CLASS RETINAL DISEASE CLASSIFICATION
+</footer>
+
+<script>
+  const fileInput    = document.getElementById('fileInput');
+  const uploadZone   = document.getElementById('uploadZone');
+  const previewImg   = document.getElementById('previewImg');
+  const analyzeBtn   = document.getElementById('analyzeBtn');
+  const loading      = document.getElementById('loading');
+  const defaultMsg   = document.getElementById('defaultMsg');
+  const resultsPanel = document.getElementById('resultsPanel');
+  const probDefault  = document.getElementById('probDefault');
+  const probPanel    = document.getElementById('probPanel');
+
+  let selectedFile = null;
+
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault(); uploadZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) handleFile(file);
+  });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+  function handleFile(file) {
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      previewImg.src = e.target.result;
+      previewImg.style.display = 'block';
+      uploadZone.querySelector('.upload-icon').style.display = 'none';
+      uploadZone.querySelector('h4').style.display = 'none';
+      uploadZone.querySelector('p').style.display = 'none';
+      uploadZone.style.padding = '10px';
+    };
+    reader.readAsDataURL(file);
+    analyzeBtn.disabled = false;
+  }
+
+  async function analyzeImage() {
+    if (!selectedFile) return;
+
+    analyzeBtn.disabled = true;
+    loading.style.display = 'block';
+    defaultMsg.style.display = 'none';
+    resultsPanel.style.display = 'none';
+    probDefault.style.display = 'none';
+    probPanel.style.display = 'none';
+
+    try {
+      const formData = new FormData();
+      formData.append('image', selectedFile, selectedFile.name);
+
+     const response = await fetch('/predict', { method: 'POST', body: formData });
+      const data = await response.json();
+
+      if (data.error === 'not_eye_image') {
+        throw new Error(data.message);
+      }
+      if (!response.ok || data.error) {
+        throw new Error(data.message || data.error || 'Server error: ' + response.status);
+      }
+
+      // Grad-CAM
+      document.getElementById('gradcamContainer').innerHTML =
+        `<img src="data:image/png;base64,${data.gradcam}" alt="Grad-CAM"/>`;
+
+      // Normal / disease styling
+      const isNormal    = data.is_normal;
+      const predBadge   = document.getElementById('predBadge');
+      const predName    = document.getElementById('predName');
+      const confBar     = document.getElementById('confBar');
+      const confPct     = document.getElementById('confPct');
+      const infoBox     = document.getElementById('infoBox');
+      const healthyBanner = document.getElementById('healthyBanner');
+
+      predName.textContent   = data.prediction;
+      confPct.textContent    = data.confidence + '%';
+      infoBox.textContent    = data.info;
+
+      if (isNormal) {
+        healthyBanner.style.display = 'block';
+        predBadge.classList.add('normal-result');
+        predName.classList.add('healthy');
+        confBar.classList.add('healthy');
+        confPct.classList.add('healthy');
+        infoBox.classList.add('healthy');
+      } else {
+        healthyBanner.style.display = 'none';
+        predBadge.classList.remove('normal-result');
+        predName.classList.remove('healthy');
+        confBar.classList.remove('healthy');
+        confPct.classList.remove('healthy');
+        infoBox.classList.remove('healthy');
+      }
+
+      const sevBadge = document.getElementById('severityBadge');
+      sevBadge.textContent = isNormal ? '✓ No Disease Detected' : 'Severity: ' + data.severity;
+      sevBadge.className   = 'severity-badge severity-' + data.severity;
+
+      setTimeout(() => { confBar.style.width = data.confidence + '%'; }, 100);
+
+      // Probability bars
+      const barsEl = document.getElementById('probBars');
+      barsEl.innerHTML = '';
+      data.all_probs.forEach((item, i) => {
+        const isTop    = i === 0;
+        const isHealth = item.name.includes('Normal') || item.name.includes('Healthy');
+        const fillClass= isTop ? (isHealth ? 'healthy' : 'top') : 'other';
+        const row = document.createElement('div');
+        row.className = 'prob-row';
+        row.innerHTML = `
+          <div class="prob-label">${item.name}</div>
+          <div class="prob-bar-bg">
+            <div class="prob-bar-fill ${fillClass}" id="bar_${i}" style="width:0%"></div>
+          </div>
+          <div class="prob-pct">${item.prob}%</div>
+        `;
+        barsEl.appendChild(row);
+        setTimeout(() => {
+          document.getElementById('bar_' + i).style.width = item.prob + '%';
+        }, 150 + i * 80);
+      });
+
+      loading.style.display  = 'none';
+      resultsPanel.style.display = 'block';
+      probPanel.style.display    = 'block';
+
+    } catch (err) {
+      loading.style.display = 'none';
+      defaultMsg.style.display = 'block';
+      defaultMsg.innerHTML = `<p style="color:var(--red);font-family:var(--mono);font-size:0.8rem">Error: ${err.message}</p>`;
+      console.error(err);
+    }
+    analyzeBtn.disabled = false;
+  }
+</script>
+</body>
+</html>
