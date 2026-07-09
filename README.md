@@ -30,10 +30,19 @@ RetinaScan AI classifies retinal fundus images into 6 disease categories using a
 - **Validation Accuracy:** ~73.5%
 
 > ⚠️ The dataset is not included in this repo due to size. Download it directly from the Kaggle link above and place it in a `dataset/` folder before retraining.
-
 > ⚠️ If `best_eye_model.keras` exceeds GitHub's file size limit, it's hosted externally — see the download link below.
 
 **Trained model download:** `[add your Google Drive / Hugging Face link here]`
+
+## Test Images
+
+Sample retinal fundus images are included in this repository so you can quickly try out the app without needing your own dataset:
+
+- `agedegenration_testimage` — sample image for testing Age-related Macular Degeneration detection
+- `cataract_testimage` — sample image for testing Cataract detection
+- `glaucoma_testimage` — sample image for testing Glaucoma detection
+
+Simply download any of these images from the repo and upload them on the app's home page to see a live prediction and Grad-CAM heatmap in action.
 
 ## Project Structure
 
@@ -77,7 +86,6 @@ python app.py
 ```
 
 Then open `http://localhost:5000` in your browser.
-
 
 ## Future Improvements
 
