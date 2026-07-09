@@ -1,101 +1,161 @@
-# RetinaScan AI — Eye Disease Detection System
+# RetinaScan-AI 👁️
 
-An AI-powered web application that detects retinal diseases from fundus images using deep learning, with visual explainability so users can see *why* the model made its prediction.
+An AI-powered web application for automated eye disease detection from retinal fundus images, built as a final year BCA project.
 
-## What It Does
+**🔗 Live App:** [https://aws-devops.duckdns.org/](https://aws-devops.duckdns.org/)
 
-RetinaScan AI classifies retinal fundus images into 6 disease categories using a fine-tuned **EfficientNetB0** convolutional neural network. Alongside the prediction, it generates a **Grad-CAM heatmap** overlay that highlights the regions of the retina the model focused on, making the diagnosis interpretable rather than a black box.
+---
 
-## Technologies Used
+## Overview
 
-- **Python 3.11**
-- **TensorFlow / Keras** — model training and inference (EfficientNetB0 transfer learning)
-- **Flask** — backend web server and REST routes
-- **OpenCV** — image preprocessing
-- **Grad-CAM** — model explainability / heatmap visualization
-- **HTML/CSS/JavaScript** — frontend templates
+RetinaScan-AI uses a fine-tuned deep learning model to classify retinal fundus images into six categories, providing an instant, browser-based diagnostic aid with visual explainability via Grad-CAM heatmaps.
 
-## Features
+**Detected classes:**
+- Age-related Macular Degeneration (`ageDegeneration`)
+- Cataract (`cataract`)
+- Glaucoma (`glaucoma`)
+- Hypertensive Retinopathy (`hypertension`)
+- Myopia (`myopia`)
+- Normal / Healthy Eye (`normal`)
 
-- Upload a retinal fundus image and get an instant disease classification
-- 6-class detection across common retinal conditions
-- Grad-CAM heatmap overlay showing the model's attention regions
-- Simple, navigable web interface (home, prediction, results pages)
-- ~73.5% validation accuracy on the held-out test set
+---
 
-## Model & Dataset
+## Model
 
-- **Architecture:** EfficientNetB0 (transfer learning, fine-tuned on retinal fundus images)
-- **Dataset:** [Eye Disease Dataset by kondwani (Kaggle)](https://www.kaggle.com/datasets/kondwani/eye-disease-dataset)
-- **Validation Accuracy:** ~73.5%
+- **Architecture:** EfficientNetB0 (transfer learning)
+- **Training:** Two-phase fine-tuning strategy on retinal fundus image dataset
+- **Output:** 6-class classifier (expanded from an initial 5-class version to add a "normal/healthy" category)
+- **Explainability:** Grad-CAM heatmaps generated from the `top_conv` layer, highlighting the regions of the image the model focused on for its prediction
+- **Saved model file:** `best_eye_model_6class.keras`
+- **Training environment:** Google Colab (retraining script included in the repo)
 
-> ⚠️ The dataset is not included in this repo due to size. Download it directly from the Kaggle link above and place it in a `dataset/` folder before retraining.
-> ⚠️ If `best_eye_model.keras` exceeds GitHub's file size limit, it's hosted externally — see the download link below.
+A standalone **Gradio app** is also included for quick local testing/demoing of the model with Grad-CAM visualization, separate from the production Flask web app.
 
-**Trained model download:** `[add your Google Drive / Hugging Face link here]`
+---
+
+## Web Application (Backend)
+
+The production-facing app is a **Flask** backend serving a custom HTML/CSS/JS frontend with:
+- Drag-and-drop image upload
+- Animated probability bars for each class
+- Dark medical-themed UI
+- Inline Grad-CAM heatmap display
+
+**Backend stack:**
+- Flask (application logic, routing, inference)
+- Gunicorn (production WSGI server, replacing Flask's built-in dev server)
+- Conda environment: `retinascan`
+
+---
+
+## Deployment Architecture
+
+The app is deployed on an **AWS EC2** instance and served over HTTPS at a free DuckDNS domain, with an automated CI/CD pipeline for continuous deployment.
+
+```
+GitHub (main branch)
+      │  git push
+      ▼
+GitHub Actions (deploy.yml)
+      │  SSH (appleboy/ssh-action)
+      ▼
+EC2 Instance (Ubuntu, t3.micro)
+      │
+      ├─ git pull origin main
+      ├─ systemctl restart gunicorn.service
+      │        │
+      │        ▼
+      │   Gunicorn (127.0.0.1:5000)
+      │        │
+      ▼        ▼
+   Nginx (reverse proxy, SSL termination)
+      │
+      ▼
+https://aws-devops.duckdns.org/
+```
+
+**Components:**
+
+| Layer | Technology | Details |
+|---|---|---|
+| Compute | AWS EC2 (Ubuntu, t3.micro) | Runs the app, gunicorn, and nginx |
+| App server | Gunicorn | Managed as a `systemd` service (`gunicorn.service`), bound to `127.0.0.1:5000` |
+| Reverse proxy | Nginx | Forwards HTTPS traffic to gunicorn, terminates SSL |
+| SSL/TLS | Let's Encrypt (via Certbot) | Auto-managed certificates for the DuckDNS domain |
+| Domain | DuckDNS | Free dynamic DNS pointing to the EC2 public IP — `aws-devops.duckdns.org` |
+| CI/CD | GitHub Actions | `.github/workflows/deploy.yml` — auto-deploys on every push to `main` |
+
+---
+
+## Key Backend & Infrastructure Changes (Deployment Setup)
+
+The following changes were made to take the project from a local prototype to a live, auto-deploying production app:
+
+1. **Project restructuring**
+   - Moved `index.html` into a `templates/` directory to match Flask's expected template structure
+   - Added a `.gitignore` to exclude environment files, model checkpoints, and other non-essential artifacts from version control
+
+2. **Repository & version control**
+   - Initialized Git, connected to GitHub (`ShaunD12522/RetinaScan-AI`), and merged local commits with the existing remote repository (unrelated histories merge)
+
+3. **Production WSGI server**
+   - Replaced Flask's development server with **Gunicorn** for stability and performance
+   - Created a dedicated `systemd` service (`/etc/systemd/system/gunicorn.service`) so the app:
+     - Starts automatically on boot
+     - Restarts automatically if it crashes
+     - Can be cleanly restarted by the deployment pipeline via `systemctl restart gunicorn`
+
+4. **Reverse proxy configuration (Nginx)**
+   - Configured Nginx as a reverse proxy in front of gunicorn
+   - Fixed a `proxy_pass` misconfiguration that originally pointed to a non-existent Unix socket (`retinascan.sock`), updating it to proxy directly to gunicorn's TCP address (`http://127.0.0.1:5000`) — this resolved a `502 Bad Gateway` error and made the site reachable
+
+5. **HTTPS / SSL**
+   - Issued and configured a free SSL certificate via **Certbot (Let's Encrypt)** for the DuckDNS domain `aws-devops.duckdns.org`, enabling secure HTTPS access with automatic HTTP → HTTPS redirection
+
+6. **Networking / security group**
+   - Opened the necessary inbound ports on the EC2 security group (SSH for deployment access, HTTP/HTTPS for the live site) so both GitHub Actions and public users can reach the instance
+
+7. **CI/CD pipeline (GitHub Actions)**
+   - Added `.github/workflows/deploy.yml`, triggered on every push to `main`
+   - Uses a dedicated SSH deploy key (stored as a GitHub Actions secret) to connect to the EC2 instance and:
+     1. Pull the latest code (`git pull origin main`)
+     2. Restart the gunicorn service to apply changes (`systemctl restart gunicorn`)
+   - Secrets used: `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY` (stored securely in GitHub repo settings, never committed to the codebase)
+
+---
+
+## Tech Stack Summary
+
+- **ML/Model:** TensorFlow, Keras, EfficientNetB0, Grad-CAM
+- **Backend:** Flask, Gunicorn
+- **Frontend:** HTML, CSS, JavaScript
+- **Demo App:** Gradio
+- **Infrastructure:** AWS EC2, Nginx, systemd
+- **DNS/SSL:** DuckDNS, Let's Encrypt (Certbot)
+- **CI/CD:** GitHub Actions
+
+---
 
 ## Test Images
 
-Sample retinal fundus images are included in this repository so you can quickly try out the app without needing your own dataset:
+Sample retinal fundus images are included directly in the repository so the app's functionality can be tested immediately without sourcing external images:
 
-- `agedegenration_testimage` — sample image for testing Age-related Macular Degeneration detection
-- `cataract_testimage` — sample image for testing Cataract detection
-- `glaucoma_testimage` — sample image for testing Glaucoma detection
+- `cataract_testimage` — sample image for testing cataract detection
+- `agedegenration_testimage` — sample image for testing age-related macular degeneration detection
+- `glaucoma_testimage` — sample image for testing glaucoma detection
 
-Simply download any of these images from the repo and upload them on the app's home page to see a live prediction and Grad-CAM heatmap in action.
+Simply upload any of these files through the web app's drag-and-drop interface to see a live prediction and Grad-CAM heatmap for that condition.
 
-## Project Structure
+---
 
-```
-RetinaScan-AI/
-│── app.py                 # Main Flask application
-│── requirements.txt       # Python dependencies
-│── README.md
-│── .gitignore
-│── models/
-│   └── best_eye_model.keras
-│── static/                # CSS, JS, images
-│── templates/             # HTML pages
-│── utils/                 # Preprocessing, Grad-CAM helper functions
-│── screenshots/
-│   ├── home.png
-│   ├── prediction.png
-│   └── gradcam.png
-```
+## Project Status
 
-## How to Run Locally
+✅ Model trained and evaluated (6-class)
+✅ Flask web app with Grad-CAM visualization
+✅ Production deployment on AWS EC2
+✅ HTTPS enabled via DuckDNS + Let's Encrypt
+✅ Automated CI/CD pipeline via GitHub Actions
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/<ShaunD12522>/RetinaScan-AI.git
-cd RetinaScan-AI
+---
 
-# 2. Create and activate a virtual environment (Python 3.11 recommended)
-python3.11 -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Download the trained model
-# Place best_eye_model.keras inside the models/ folder
-# (download link above)
-
-# 5. Run the app
-python app.py
-```
-
-Then open `http://localhost:5000` in your browser.
-
-## Future Improvements
-
-- Expand dataset for higher class balance and accuracy
-- Add batch prediction support
-- Deploy to a cloud platform (AWS/GCP) with a public inference endpoint
-- Add authentication for clinical-style usage
-
-## Author
-
-**Shaun D**
-BCA Graduate, St. Francis College, Koramangala, Bangalore
-AWS & IBM Cloud Certified | Cloud Computing Enthusiast
+*Final year BCA project — St. Francis College, Koramangala, Bangalore. Supervisor: Gajanan Revankar.*
