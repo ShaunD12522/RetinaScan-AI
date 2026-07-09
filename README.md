@@ -78,11 +78,6 @@ python app.py
 
 Then open `http://localhost:5000` in your browser.
 
-## Screenshots
-
-| Home Page | Prediction | Grad-CAM Explainability |
-|---|---|---|
-| ![Home](screenshots/home.png) | ![Prediction](screenshots/prediction.png) | ![Grad-CAM](screenshots/gradcam.png) |
 
 ## Future Improvements
 
