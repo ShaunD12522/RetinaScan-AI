@@ -20,5 +20,4 @@ jobs:
           script: |
             cd /home/ubuntu/RetinaScan-AI
             git pull origin main
-            source /home/ubuntu/miniconda3/envs/retinascan/bin/activate
             sudo systemctl restart gunicorn
