@@ -2,7 +2,6 @@
 
 An AI-powered web application for automated eye disease detection from retinal fundus images, built as a final year BCA project.
 
-**🔗 Live App:** [https://aws-devops.duckdns.org/](https://aws-devops.duckdns.org/)
 
 ---
 
