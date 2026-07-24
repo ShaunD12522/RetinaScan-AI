@@ -49,7 +49,7 @@ The production-facing app is a **Flask** backend serving a custom HTML/CSS/JS fr
 
 ## Deployment Architecture
 
-The app is deployed on an **AWS EC2** instance and served over HTTPS at a free DuckDNS domain, with an automated CI/CD pipeline for continuous deployment.
+The app is deployed on an **AWS EC2** instance, with an automated CI/CD pipeline for continuous deployment.
 
 ```
 GitHub (main branch)
@@ -68,9 +68,7 @@ EC2 Instance (Ubuntu, t3.micro)
       │        │
       ▼        ▼
    Nginx (reverse proxy, SSL termination)
-      │
-      ▼
-https://aws-devops.duckdns.org/
+  
 ```
 
 **Components:**
@@ -81,7 +79,6 @@ https://aws-devops.duckdns.org/
 | App server | Gunicorn | Managed as a `systemd` service (`gunicorn.service`), bound to `127.0.0.1:5000` |
 | Reverse proxy | Nginx | Forwards HTTPS traffic to gunicorn, terminates SSL |
 | SSL/TLS | Let's Encrypt (via Certbot) | Auto-managed certificates for the DuckDNS domain |
-| Domain | DuckDNS | Free dynamic DNS pointing to the EC2 public IP — `aws-devops.duckdns.org` |
 | CI/CD | GitHub Actions | `.github/workflows/deploy.yml` — auto-deploys on every push to `main` |
 
 ---
