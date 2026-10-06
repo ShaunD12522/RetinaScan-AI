@@ -25,7 +25,7 @@ RetinaScan-AI uses a fine-tuned deep learning model to classify retinal fundus i
 - **Training:** Two-phase fine-tuning strategy on retinal fundus image dataset
 - **Output:** 6-class classifier (expanded from an initial 5-class version to add a "normal/healthy" category)
 - **Explainability:** Grad-CAM heatmaps generated from the `top_conv` layer, highlighting the regions of the image the model focused on for its prediction
-- **Saved model file:** `best_eye_model_6class.keras`
+- **Saved model file:** `best_eye_model_v2.keras`
 - **Training environment:** Google Colab (retraining script included in the repo)
 
 A standalone **Gradio app** is also included for quick local testing/demoing of the model with Grad-CAM visualization, separate from the production Flask web app.
@@ -49,7 +49,9 @@ The production-facing app is a **Flask** backend serving a custom HTML/CSS/JS fr
 
 ## Deployment Architecture
 
-The app is deployed on an **AWS EC2** instance, with an automated CI/CD pipeline for continuous deployment.
+The app was deployed on an **AWS EC2** instance, with a CI/CD pipeline for continuous deployment.
+
+> **Note:** The AWS resources were terminated after the assignment to stay within the Free Tier, so there is no live URL. The deploy workflow is now manual (`workflow_dispatch`). Evidence of the working deployment is in [`docs/screenshots/`](docs/screenshots/).
 
 ```
 GitHub (main branch)
@@ -136,11 +138,33 @@ The following changes were made to take the project from a local prototype to a 
 
 Sample retinal fundus images are included directly in the repository so the app's functionality can be tested immediately without sourcing external images:
 
-- `cataract_testimage` — sample image for testing cataract detection
-- `agedegenration_testimage` — sample image for testing age-related macular degeneration detection
-- `glaucoma_testimage` — sample image for testing glaucoma detection
+- `samples/cataract_testimage.png` — sample image for testing cataract detection
+- `samples/agedegenration_testimage.png` — sample image for testing age-related macular degeneration detection
+- `samples/glaucoma_testimage.png` — sample image for testing glaucoma detection
 
 Simply upload any of these files through the web app's drag-and-drop interface to see a live prediction and Grad-CAM heatmap for that condition.
+
+---
+
+## Screenshots
+
+![App screenshot 1](docs/screenshots/screenshot1.png)
+![App screenshot 2](docs/screenshots/screenshot2.png)
+![App screenshot 3](docs/screenshots/screenshot3.png)
+
+---
+
+## Deployment Evidence
+
+| Area | Screenshot |
+|---|---|
+| Architecture | [architecture.png](docs/screenshots/architecture.png), [Architecture_Diagram.png](docs/screenshots/Architecture_Diagram.png) |
+| IAM roles and deploy-user policy | [IAM_roles.png](docs/screenshots/IAM_roles.png), [deploy-user-policy.png](docs/screenshots/deploy-user-policy.png) |
+| HTTPS | [https.png](docs/screenshots/https.png) |
+| S3 backups | [bucket.png](docs/screenshots/bucket.png) |
+| CI/CD workflow | [deploy.yml.png](docs/screenshots/deploy.yml.png) |
+| CloudWatch alarms, alerts, dashboard | [alarms.png](docs/screenshots/alarms.png), [alerts.png](docs/screenshots/alerts.png), [dashboards.png](docs/screenshots/dashboards.png) |
+| k6 load test (2,257 requests, 100% success, p95 931 ms) | [Load_Test_Charts.png](docs/screenshots/Load_Test_Charts.png) |
 
 ---
 
@@ -148,8 +172,8 @@ Simply upload any of these files through the web app's drag-and-drop interface t
 
 ✅ Model trained and evaluated (6-class)
 ✅ Flask web app with Grad-CAM visualization
-✅ Production deployment on AWS EC2
-✅ HTTPS enabled via DuckDNS + Let's Encrypt
+✅ Deployed on AWS EC2 (since torn down; see `docs/screenshots/`)
+✅ HTTPS via DuckDNS + Let's Encrypt (while deployed)
 ✅ Automated CI/CD pipeline via GitHub Actions
 
 ---

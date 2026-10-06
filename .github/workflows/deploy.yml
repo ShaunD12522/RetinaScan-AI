@@ -1,8 +1,12 @@
 name: Deploy to EC2
 
+# The EC2 instance used for this project has been terminated (AWS Free Tier cleanup),
+# so automatic deploys on push are disabled. Re-enable by adding back:
+#   push:
+#     branches: [ main ]
+# after provisioning a new instance and updating the EC2_HOST / EC2_USER / EC2_SSH_KEY secrets.
 on:
-  push:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   deploy:
